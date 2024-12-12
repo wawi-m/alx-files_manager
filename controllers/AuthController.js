@@ -6,11 +6,11 @@ import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
 
 class AuthController {
-  static async getConnect(req, res) {
+  static async getConnect(request, response) {
     try {
-      const authHeader = req.headers.authorization;
+      const authHeader = request.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Basic ')) {
-        res.status(401).json({ error: 'Unauthorized' });
+        response.status(401).json({ error: 'Unauthorized' });
         return;
       }
 
@@ -20,7 +20,7 @@ class AuthController {
 
       const user = await dbClient.client.db().collection('users').findOne({ email, password: sha1(password) });
       if (!user) {
-        res.status(401).json({ error: 'Unauthorized' });
+        response.status(401).json({ error: 'Unauthorized' });
         return;
       }
 
@@ -30,19 +30,19 @@ class AuthController {
       const expirationTimeInSeconds = 86400;
       await redisClient.set(key, user._id.toString(), expirationTimeInSeconds);
 
-      res.status(200).json({ 'token': token });
+      response.status(200).json({ 'token': token });
     } catch (error) {
       console.error('Error in getConnect:', error);
-      res.status(500).json({ error: 'Internal Server Error' });
+      response.status(500).json({ error: 'Internal Server Error' });
     }
   }
 
-  static async getDisconnect(req, res) {
+  static async getDisconnect(request, response) {
     try {
-      const { 'x-token': token } = req.headers;
+      const { 'x-token': token } = request.headers;
 
       if (!token) {
-        res.status(401).json({ error: 'Unauthorized' });
+        response.status(401).json({ error: 'Unauthorized' });
         return;
       }
 
@@ -50,15 +50,15 @@ class AuthController {
       const userId = await redisClient.get(key);
 
       if (!userId) {
-        res.status(401).json({ error: 'Unauthorized' });
+        response.status(401).json({ error: 'Unauthorized' });
         return;
       }
 
       await redisClient.del(key);
-      res.status(204).end();
+      response.status(204).end();
     } catch (error) {
       console.error('Error in getDisconnect:', error);
-      res.status(500).json({ error: 'Internal Server Error' });
+      response.status(500).json({ error: 'Internal Server Error' });
     }
   }
 }

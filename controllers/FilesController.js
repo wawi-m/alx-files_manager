@@ -9,34 +9,34 @@ import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
 
 class FilesController {
-  static async postUpload(req, res) {
+  static async postUpload(request, response) {
     try {
-      const user = await FilesController.retrieveUserBasedOnToken(req);
+      const user = await FilesController.retrieveUserBasedOnToken(request);
 
       if (!user) {
-        return res.status(401).send({
+        return response.status(401).send({
           error: 'Unauthorized',
         });
       }
 
       const {
         name, type, parentId, isPublic, data,
-      } = req.body;
+      } = request.body;
 
       if (!name) {
-        return res.status(400).send({
+        return response.status(400).send({
           error: 'Missing name',
         });
       }
 
       if (!type || !['folder', 'file', 'image'].includes(type)) {
-        return res.status(400).send({
+        return response.status(400).send({
           error: 'Missing type',
         });
       }
 
       if (!data && type !== 'folder') {
-        return res.status(400).send({
+        return response.status(400).send({
           error: 'Missing data',
         });
       }
@@ -45,13 +45,13 @@ class FilesController {
         const parent = await FilesController.getFileById(parentId);
 
         if (!parent) {
-          return res.status(400).send({
+          return response.status(400).send({
             error: 'Parent not found',
           });
         }
 
         if (parent.type !== 'folder') {
-          return res.status(400).send({
+          return response.status(400).send({
             error: 'Parent is not a folder',
           });
         }
@@ -73,7 +73,7 @@ class FilesController {
         };
         delete writeResp._id;
         delete writeResp.localPath;
-        return res.status(201).send(writeResp);
+        return response.status(201).send(writeResp);
       }
       const storeFolderPath = process.env.FOLDER_PATH || '/tmp/files_manager';
       const fileName = uuidv4();
@@ -91,7 +91,7 @@ class FilesController {
           await mkdirAsync(storeFolderPath, { recursive: true });
         } catch (error) {
           console.error('Error creating directory:', error);
-          return res.status(500).send({
+          return response.status(500).send({
             error: 'Internal Server Error',
           });
         }
@@ -100,7 +100,7 @@ class FilesController {
       fs.writeFile(filePath, decodedData, 'utf-8', (error) => {
         if (error) {
           console.error('Error writing file:', error);
-          return res.status(500).send({
+          return response.status(500).send({
             error: 'Internal Server Error',
           });
         }
@@ -115,17 +115,17 @@ class FilesController {
       delete writeResp._id;
       delete writeResp.localPath;
 
-      return res.status(201).send(writeResp);
+      return response.status(201).send(writeResp);
     } catch (error) {
       console.error('Error in postUpload:', error);
-      return res.status(500).send({
+      return response.status(500).send({
         error: 'Internal Server Error',
       });
     }
   }
 
-  static async retrieveUserBasedOnToken(req) {
-    const authToken = req.header('X-Token') || null;
+  static async retrieveUserBasedOnToken(request) {
+    const authToken = request.header('X-Token') || null;
 
     if (!authToken) return null;
 
@@ -158,20 +158,20 @@ class FilesController {
       .catch(() => false);
   }
 
-  static async getShow(req, res) {
+  static async getShow(request, response) {
     try {
-      const user = await FilesController.retrieveUserBasedOnToken(req);
+      const user = await FilesController.retrieveUserBasedOnToken(request);
 
       if (!user) {
-        return res.status(401).send({
+        return response.status(401).send({
           error: 'Unauthorized',
         });
       }
 
-      const fileId = req.params.id;
+      const fileId = request.params.id;
 
       if (!fileId) {
-        return res.status(400).send({
+        return response.status(400).send({
           error: 'Unauthorized',
         });
       }
@@ -179,12 +179,12 @@ class FilesController {
       const file = await FilesController.getFileById(fileId);
 
       if (!file || file.userId.toString() !== user._id.toString()) {
-        return res.status(404).send({
+        return response.status(404).send({
           error: 'Not found',
         });
       }
 
-      // return res.status(200).send(file);
+      // return response.status(200).send(file);
       const mappedFile = {
         id: file._id.toString(),
         ...file,
@@ -194,37 +194,37 @@ class FilesController {
       delete mappedFile._id;
       delete mappedFile.localPath;
 
-      return res.status(200).send(mappedFile);
+      return response.status(200).send(mappedFile);
     } catch (error) {
       console.error('Error in getShow:', error);
-      return res.status(500).send({
+      return response.status(500).send({
         error: 'Internal Server Error',
       });
     }
   }
 
-  static async getIndex(req, res) {
+  static async getIndex(request, response) {
     try {
-      const user = await FilesController.retrieveUserBasedOnToken(req);
+      const user = await FilesController.retrieveUserBasedOnToken(request);
 
       if (!user) {
-        return res.status(401).send({
+        return response.status(401).send({
           error: 'Unauthorized',
         });
       }
 
-      const parentId = req.query.parentId || 0;
-      const page = req.query.page || 0;
+      const parentId = request.query.parentId || 0;
+      const page = request.query.page || 0;
       const pageSize = 20;
 
       const files = await FilesController.getFilesByParentId(
         user._id.toString(), parentId, page, pageSize,
       );
 
-      return res.status(200).send(files);
+      return response.status(200).send(files);
     } catch (error) {
       console.error('Error in getIndex:', error);
-      return res.status(500).send({
+      return response.status(500).send({
         error: 'Internal Server Error',
       });
     }
@@ -249,20 +249,20 @@ class FilesController {
     }
   }
 
-  static async putPublish(req, res) {
+  static async putPublish(request, response) {
     try {
-      const user = await FilesController.retrieveUserBasedOnToken(req);
+      const user = await FilesController.retrieveUserBasedOnToken(request);
 
       if (!user) {
-        return res.status(401).send({
+        return response.status(401).send({
           error: 'Unauthorized',
         });
       }
 
-      const fileId = req.params.id;
+      const fileId = request.params.id;
 
       if (!fileId) {
-        return res.status(404).send({
+        return response.status(404).send({
           error: 'Not found',
         });
       }
@@ -270,36 +270,36 @@ class FilesController {
       const file = await FilesController.getFileById(fileId);
 
       if (!file || file.userId.toString() !== user._id.toString()) {
-        return res.status(404).send({
+        return response.status(404).send({
           error: 'Not found',
         });
       }
 
       const updatedFile = await FilesController.updateFilePublishStatus(fileId, true);
 
-      return res.status(200).send(updatedFile);
+      return response.status(200).send(updatedFile);
     } catch (error) {
       console.error('Error in putPublish:', error);
-      return res.status(500).send({
+      return response.status(500).send({
         error: 'Internal Server Error',
       });
     }
   }
 
-  static async putUnpublish(req, res) {
+  static async putUnpublish(request, response) {
     try {
-      const user = await FilesController.retrieveUserBasedOnToken(req);
+      const user = await FilesController.retrieveUserBasedOnToken(request);
 
       if (!user) {
-        return res.status(401).send({
+        return response.status(401).send({
           error: 'Unauthorized',
         });
       }
 
-      const fileId = req.params.id;
+      const fileId = request.params.id;
 
       if (!fileId) {
-        return res.status(404).send({
+        return response.status(404).send({
           error: 'Not found',
         });
       }
@@ -307,17 +307,17 @@ class FilesController {
       const file = await FilesController.getFileById(fileId);
 
       if (!file || file.userId.toString() !== user._id.toString()) {
-        return res.status(404).send({
+        return response.status(404).send({
           error: 'Not found',
         });
       }
 
       const updatedFile = await FilesController.updateFilePublishStatus(fileId, false);
 
-      return res.status(200).send(updatedFile);
+      return response.status(200).send(updatedFile);
     } catch (error) {
       console.error('Error in putUnpublish:', error);
-      return res.status(500).send({
+      return response.status(500).send({
         error: 'Internal Server Error',
       });
     }
@@ -342,14 +342,14 @@ class FilesController {
     return { id: _id.toString(), ...rest };
   }
 
-  static async getFile(req, res) {
+  static async getFile(request, response) {
     try {
-      const user = await FilesController.retrieveUserBasedOnToken(req);
+      const user = await FilesController.retrieveUserBasedOnToken(request);
 
-      const fileId = req.params.id;
+      const fileId = request.params.id;
 
       if (!fileId) {
-        return res.status(404).send({
+        return response.status(404).send({
           error: 'Not found',
         });
       }
@@ -357,19 +357,19 @@ class FilesController {
       const file = await FilesController.getFileById(fileId);
 
       if (!file) {
-        return res.status(404).send({
+        return response.status(404).send({
           error: 'Not found',
         });
       }
 
       if (!file.isPublic && (!user || file.userId.toString() !== user._id.toString())) {
-        return res.status(404).send({
+        return response.status(404).send({
           error: 'Not found',
         });
       }
 
       if (file.type === 'folder') {
-        return res.status(400).send({
+        return response.status(400).send({
           error: "A folder doesn't have content",
         });
       }
@@ -378,7 +378,7 @@ class FilesController {
 
       const pathExists = await FilesController.pathExists(filePath);
       if (!pathExists) {
-        return res.status(404).send({
+        return response.status(404).send({
           error: 'Not found',
         });
       }
@@ -389,11 +389,11 @@ class FilesController {
 
       const fileContent = await readFileAsync(filePath, 'utf-8');
 
-      res.setHeader('Content-Type', mimeType);
-      return res.status(200).send(fileContent);
+      response.setHeader('Content-Type', mimeType);
+      return response.status(200).send(fileContent);
     } catch (error) {
       console.error('Error in getFile:', error);
-      return res.status(500).send({
+      return response.status(500).send({
         error: 'Internal Server Error',
       });
     }
